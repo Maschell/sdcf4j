@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * The basic command handler.
@@ -73,9 +74,14 @@ public abstract class CommandHandler {
         return command;
     }
 
-    public void removeCommand(SimpleCommand simpleCommand) {
+    public void removeCommand(final SimpleCommand simpleCommand) {
         commandList.remove(simpleCommand);
-        commands.values().removeIf(val -> val.equals(simpleCommand));
+        commands.values().removeIf(new Predicate<SimpleCommand>() {
+            @Override
+            public boolean test(SimpleCommand val) {
+                return val.equals(simpleCommand);
+            }
+        });
     }
 
     /**
