@@ -41,7 +41,7 @@ public abstract class CommandHandler {
      * @param executor
      *            The executor to register.
      */
-    public void registerCommand(CommandExecutor executor) {
+    public List<SimpleCommand> registerCommand(CommandExecutor executor) {
         List<SimpleCommand> result = new ArrayList<>();
         for (Method method : executor.getClass().getMethods()) {
             Command annotation = method.getAnnotation(Command.class);
