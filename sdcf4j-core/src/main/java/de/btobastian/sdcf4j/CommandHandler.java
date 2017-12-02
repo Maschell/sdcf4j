@@ -42,6 +42,7 @@ public abstract class CommandHandler {
      *            The executor to register.
      */
     public void registerCommand(CommandExecutor executor) {
+        List<SimpleCommand> result = new ArrayList<>();
         for (Method method : executor.getClass().getMethods()) {
             Command annotation = method.getAnnotation(Command.class);
             if (annotation == null) {
@@ -50,9 +51,9 @@ public abstract class CommandHandler {
             if (annotation.aliases().length == 0) {
                 throw new IllegalArgumentException("Aliases array cannot be empty!");
             }
-            SimpleCommand command = new SimpleCommand(annotation, method, executor);
-            registerCommand(command);
+            result.add(registerCommand(annotation, method, executor));
         }
+        return result;
     }
 
     /**
@@ -61,14 +62,20 @@ public abstract class CommandHandler {
      * @param executor
      *            The executor to register.
      */
-    public void registerCommand(SimpleCommand simpleCommand) {
+    public SimpleCommand registerCommand(Command annotation, Method method, CommandExecutor executor) {
+        SimpleCommand command = new SimpleCommand(annotation, method, executor);
         for (String alias : simpleCommand.getCommandAnnotation().aliases()) {
             // add command to map. It's faster to access it from the map than iterating to the whole list
             commands.put(defaultPrefix + alias.toLowerCase().replace(" ", ""), simpleCommand);
         }
         // we need a list, too, because a HashMap is not ordered.
         commandList.add(simpleCommand);
+        return command;
+    }
 
+    public void removeCommand(SimpleCommand simpleCommand) {
+        commandList.remove(simpleCommand);
+        commands.values().removeIf(val -> val.equals(simpleCommand));
     }
 
     /**
