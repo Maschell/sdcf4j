@@ -38,7 +38,8 @@ public abstract class CommandHandler {
     /**
      * Registers an executor.
      *
-     * @param executor The executor to register.
+     * @param executor
+     *            The executor to register.
      */
     public void registerCommand(CommandExecutor executor) {
         for (Method method : executor.getClass().getMethods()) {
@@ -50,13 +51,24 @@ public abstract class CommandHandler {
                 throw new IllegalArgumentException("Aliases array cannot be empty!");
             }
             SimpleCommand command = new SimpleCommand(annotation, method, executor);
-            for (String alias : annotation.aliases()) {
-                // add command to map. It's faster to access it from the map than iterating to the whole list
-                commands.put(defaultPrefix + alias.toLowerCase().replace(" ", ""), command);
-            }
-            // we need a list, too, because a HashMap is not ordered.
-            commandList.add(command);
+            registerCommand(command);
         }
+    }
+
+    /**
+     * Registers an executor.
+     *
+     * @param executor
+     *            The executor to register.
+     */
+    public void registerCommand(SimpleCommand simpleCommand) {
+        for (String alias : simpleCommand.getCommandAnnotation().aliases()) {
+            // add command to map. It's faster to access it from the map than iterating to the whole list
+            commands.put(defaultPrefix + alias.toLowerCase().replace(" ", ""), simpleCommand);
+        }
+        // we need a list, too, because a HashMap is not ordered.
+        commandList.add(simpleCommand);
+
     }
 
     /**
@@ -72,8 +84,10 @@ public abstract class CommandHandler {
     /**
      * Adds a permission for the user with the given id.
      *
-     * @param userId The id of the user.
-     * @param permission The permission to add.
+     * @param userId
+     *            The id of the user.
+     * @param permission
+     *            The permission to add.
      */
     public void addPermission(String userId, String permission) {
         List<String> permissions = this.permissions.get(userId);
@@ -87,8 +101,10 @@ public abstract class CommandHandler {
     /**
      * Checks if the user with the given id has the required permission.
      *
-     * @param userId The id of the user.
-     * @param permission The permission to check.
+     * @param userId
+     *            The id of the user.
+     * @param permission
+     *            The permission to check.
      * @return If the user has the given permission.
      */
     public boolean hasPermission(String userId, String permission) {
@@ -123,7 +139,8 @@ public abstract class CommandHandler {
      * Sets the default command prefix.
      * Changing the default prefix after registering a command has no effect!
      *
-     * @param defaultPrefix The default command prefix.
+     * @param defaultPrefix
+     *            The default command prefix.
      */
     public void setDefaultPrefix(String defaultPrefix) {
         if (defaultPrefix == null) {
@@ -145,8 +162,10 @@ public abstract class CommandHandler {
     /**
      * Checks if you are allowed to do something with the given permission.
      *
-     * @param has The permission the user has.
-     * @param required The permission which is required.
+     * @param has
+     *            The permission the user has.
+     * @param required
+     *            The permission which is required.
      * @return If you can use the command with the given permission.
      */
     private boolean checkPermission(String has, String required) {
@@ -173,9 +192,12 @@ public abstract class CommandHandler {
         /**
          * Class constructor.
          *
-         * @param annotation The annotation of the executor's method.
-         * @param method The method which listens to the commands.
-         * @param executor The executor of the method.
+         * @param annotation
+         *            The annotation of the executor's method.
+         * @param method
+         *            The method which listens to the commands.
+         * @param executor
+         *            The executor of the method.
          */
         protected SimpleCommand(Command annotation, Method method, CommandExecutor executor) {
             this.annotation = annotation;
