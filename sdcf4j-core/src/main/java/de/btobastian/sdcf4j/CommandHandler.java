@@ -64,12 +64,12 @@ public abstract class CommandHandler {
      */
     public SimpleCommand registerCommand(Command annotation, Method method, CommandExecutor executor) {
         SimpleCommand command = new SimpleCommand(annotation, method, executor);
-        for (String alias : simpleCommand.getCommandAnnotation().aliases()) {
+        for (String alias : command.getCommandAnnotation().aliases()) {
             // add command to map. It's faster to access it from the map than iterating to the whole list
-            commands.put(defaultPrefix + alias.toLowerCase().replace(" ", ""), simpleCommand);
+            commands.put(defaultPrefix + alias.toLowerCase().replace(" ", ""), command);
         }
         // we need a list, too, because a HashMap is not ordered.
-        commandList.add(simpleCommand);
+        commandList.add(command);
         return command;
     }
 
