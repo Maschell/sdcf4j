@@ -32,6 +32,8 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.regex.Matcher;
 
 /**
  * A command handler for the JDA library.
@@ -88,7 +90,7 @@ public class JDA3Handler extends CommandHandler {
         if (event.getAuthor() == jda.getSelfUser()) {
             return;
         }
-        String[] splitMessage = event.getMessage().getRawContent().split(" ");
+        String[] splitMessage = event.getMessage().getContentRaw().split("[\\s&&[^\\n]]++");
         String commandString = splitMessage[0];
         SimpleCommand command = commands.get(commandString.toLowerCase());
         if (command == null) {
@@ -105,8 +107,11 @@ public class JDA3Handler extends CommandHandler {
             }
         }
         Command commandAnnotation = command.getCommandAnnotation();
-        if (commandAnnotation.requiresMention() && !commandString.equals(jda.getSelfUser().getAsMention())) {
-            return;
+        if (commandAnnotation.requiresMention()) {
+            Matcher matcher = USER_MENTION.matcher(commandString);
+            if (!matcher.find() || !matcher.group("id").equals(jda.getSelfUser().getId())) {
+                return;
+            }
         }
         if (event.isFromType(ChannelType.PRIVATE) && !commandAnnotation.privateMessages()) {
             return;
@@ -116,7 +121,7 @@ public class JDA3Handler extends CommandHandler {
         }
         if (!hasPermission(event.getAuthor(), commandAnnotation.requiredPermissions())) {
             if (Sdcf4jMessage.MISSING_PERMISSIONS.getMessage() != null) {
-                event.getChannel().sendMessage(Sdcf4jMessage.MISSING_PERMISSIONS.getMessage());
+                event.getChannel().sendMessage(Sdcf4jMessage.MISSING_PERMISSIONS.getMessage()).queue();
             }
             return;
         }
@@ -194,8 +199,6 @@ public class JDA3Handler extends CommandHandler {
                 parameters[i] = event.getTextChannel();
             } else if (type == PrivateChannel.class) {
                 parameters[i] = event.getPrivateChannel();
-            } else if (type == MessageChannel.class) {
-                parameters[i] = event.getChannel();
             } else if (type == Channel.class) {
                 parameters[i] = event.getTextChannel();
             } else if (type == Group.class) {
@@ -215,7 +218,7 @@ public class JDA3Handler extends CommandHandler {
     }
 
     /**
-     * Tries to get objects (like channel, user, integer) from the given strings.
+     * Tries to get objects (like channel, user, long) from the given strings.
      *
      * @param jda The jda object.
      * @param args The string array.
@@ -230,7 +233,7 @@ public class JDA3Handler extends CommandHandler {
     }
 
     /**
-     * Tries to get an object (like channel, user, integer) from the given string.
+     * Tries to get an object (like channel, user, long) from the given string.
      *
      * @param jda The jda object.
      * @param arg The string.
@@ -242,8 +245,9 @@ public class JDA3Handler extends CommandHandler {
             return Long.valueOf(arg);
         } catch (NumberFormatException ignored) {}
         // test user
-        if (arg.matches("<@([0-9]*)>")) {
-            String id = arg.substring(2, arg.length() - 1);
+        Matcher matcher = USER_MENTION.matcher(arg);
+        if (matcher.find()) {
+            String id = matcher.group("id");
             User user = jda.getUserById(id);
             if (user != null) {
                 return user;

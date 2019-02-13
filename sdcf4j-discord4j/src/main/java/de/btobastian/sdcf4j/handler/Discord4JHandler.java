@@ -36,6 +36,7 @@ import sx.blah.discord.util.RateLimitException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.regex.Matcher;
 
 /**
  * A command handler for the Discord4J library.
@@ -48,12 +49,7 @@ public class Discord4JHandler extends CommandHandler {
      * @param client The discord client.
      */
     public Discord4JHandler(IDiscordClient client) {
-        client.getDispatcher().registerListener(new IListener<MessageReceivedEvent> () {
-            @Override
-            public void handle(MessageReceivedEvent event) {
-                handleMessageCreate(event);
-            }
-        });
+        client.getDispatcher().registerListener((IListener<MessageReceivedEvent>) this::handleMessageCreate);
     }
 
     /**
@@ -83,7 +79,7 @@ public class Discord4JHandler extends CommandHandler {
      * @param event The MessageReceivedEvent.
      */
     private void handleMessageCreate(final MessageReceivedEvent event) {
-        String[] splitMessage = event.getMessage().getContent().split(" ");
+        String[] splitMessage = event.getMessage().getContent().split("[\\s&&[^\\n]]++");
         String commandString = splitMessage[0];
         SimpleCommand command = commands.get(commandString.toLowerCase());
         if (command == null) {
@@ -100,9 +96,11 @@ public class Discord4JHandler extends CommandHandler {
             }
         }
         Command commandAnnotation = command.getCommandAnnotation();
-        if (commandAnnotation.requiresMention() &&
-                !commandString.equals("<@" + event.getClient().getOurUser().getStringID() + ">")) {
-            return;
+        if (commandAnnotation.requiresMention()) {
+            Matcher matcher = USER_MENTION.matcher(commandString);
+            if (!matcher.find() || !matcher.group("id").equals(event.getClient().getOurUser().getStringID())) {
+                return;
+            }
         }
         if (event.getMessage().getChannel().isPrivate() && !commandAnnotation.privateMessages()) {
             return;
@@ -121,11 +119,8 @@ public class Discord4JHandler extends CommandHandler {
         final Object[] parameters = getParameters(splitMessage, command, event);
         if (commandAnnotation.async()) {
             final SimpleCommand commandFinal = command;
-            Thread t = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    invokeMethod(commandFinal, event, parameters);
-                }
+            Thread t = new Thread(() -> {
+                invokeMethod(commandFinal, event, parameters);
             });
             t.setDaemon(true);
             t.start();
@@ -183,7 +178,9 @@ public class Discord4JHandler extends CommandHandler {
                 }
             } else if (type == String[].class) {
                 parameters[i] = args;
-            } else if (type == IMessage.class) {
+            } else if (type == MessageReceivedEvent.class) {
+                parameters[i] = event;
+            }  else if (type == IMessage.class) {
                 parameters[i] = event.getMessage();
             } else if (type == IDiscordClient.class) {
                 parameters[i] = event.getClient();
@@ -204,7 +201,7 @@ public class Discord4JHandler extends CommandHandler {
     }
 
     /**
-     * Tries to get objects (like channel, user, integer) from the given strings.
+     * Tries to get objects (like channel, user, long) from the given strings.
      *
      * @param client The client.
      * @param args The string array.
@@ -219,7 +216,7 @@ public class Discord4JHandler extends CommandHandler {
     }
 
     /**
-     * Tries to get an object (like channel, user, integer) from the given string.
+     * Tries to get an object (like channel, user, long) from the given string.
      *
      * @param client The client.
      * @param arg The string.
@@ -231,8 +228,9 @@ public class Discord4JHandler extends CommandHandler {
             return Long.valueOf(arg);
         } catch (NumberFormatException ignored) {}
         // test user
-        if (arg.matches("<@([0-9]*)>")) {
-            String id = arg.substring(2, arg.length() - 1);
+        Matcher matcher = USER_MENTION.matcher(arg);
+        if (matcher.find()) {
+            String id = matcher.group("id");
             IUser user = client.getUserByID(Long.valueOf(id));
             if (user != null) {
                 return user;
